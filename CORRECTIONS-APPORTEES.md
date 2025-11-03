@@ -7,7 +7,54 @@
 
 ## ✅ Liste des corrections
 
-### 🆕 CORRECTION FINALE (3e itération) - SOLUTION DÉFINITIVE
+### 🆕 CORRECTION FINALE (4e itération) - PROBLÈME RÉSOLU ! ✅
+
+**Problème identifié grâce aux tests utilisateur** :
+
+Dans "Supabase - Get User" output :
+```json
+"date_arrivee": "=",
+"date_depart": "=",
+"property_id": "==anatole"
+```
+
+**Cause racine** : Expressions n8n mal formatées avec **double `=`**
+```json
+"fieldValue": "=={{ $json.property_id }}"  ❌ INCORRECT
+"fieldValue": "={{ $json.property_id }}"   ✅ CORRECT
+```
+
+**Conséquences** :
+- Les dates extraites par OpenAI n'étaient pas sauvegardées correctement
+- Supabase recevait littéralement "=" au lieu de la valeur
+- Le Code - Access Check recevait `date_depart: "="` et bloquait l'accès
+
+**Solutions appliquées** :
+
+1. **Correction des expressions n8n** (suppression du `=` en trop) :
+   - `"=={{ expression }}"` → `"={{ expression }}"`
+   - Affecté : Tous les nodes Supabase (Update User Data, Get History, etc.)
+
+2. **Renforcement du Code - Access Check** :
+```javascript
+// Détecte maintenant TOUTES les valeurs invalides
+const isInvalidOrMissing = (
+  !dateDepart ||
+  dateDepart === '=' ||
+  dateDepart === '==' ||
+  dateDepart.startsWith('=') ||
+  // ... autres cas
+);
+```
+
+**Résultat** :
+- ✅ Les dates sont maintenant correctement sauvegardées dans Supabase
+- ✅ Les valeurs invalides temporaires n'autorisent plus l'accès par défaut
+- ✅ Le workflow fonctionne correctement pour nouveaux utilisateurs ET utilisateurs existants
+
+---
+
+### 🆕 ITÉRATION 3 - Remplacement du node IF
 
 **Problème persistant avec "If Access Check"** :
 ```
