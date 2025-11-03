@@ -7,6 +7,26 @@
 
 ## ✅ Liste des corrections
 
+### 🆕 CORRECTION SUPPLÉMENTAIRE (2e itération)
+
+**Node : If Access Check** - Erreur de validation de type pour les nouveaux utilisateurs
+
+**Problème** :
+```
+Wrong type: '=' is a string but was expecting a dateTime
+```
+- Pour les nouveaux utilisateurs, `date_depart` est `null` ou vide
+- Avec `typeValidation: "strict"`, n8n refusait de comparer cette valeur vide avec une dateTime
+
+**Solution** :
+```json
+"typeValidation": "loose"  // Au lieu de "strict"
+```
+- Permet à n8n de convertir automatiquement les types
+- Les valeurs null/vides sont gérées correctement dans les comparaisons de dates
+
+---
+
 ### 1. **Code - Detect Property (Main)** ❌ → ✅
 
 **Problème** :
