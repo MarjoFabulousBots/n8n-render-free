@@ -266,7 +266,7 @@
             },
             {
               "fieldId": "Date",
-              "fieldValue": "{{ $now.toISO() }}"
+              "fieldValue": "={{ $now.toISO() }}"
             }
           ]
         }
@@ -301,7 +301,7 @@
             },
             {
               "fieldId": "Date",
-              "fieldValue": "{{ $now.toISO() }}"
+              "fieldValue": "={{ $now.toISO() }}"
             }
           ]
         }
@@ -411,7 +411,7 @@
           "fieldValues": [
             {
               "fieldId": "derniere_activite",
-              "fieldValue": "{{ $now.toISO() }}"
+              "fieldValue": "={{ $now.toISO() }}"
             }
           ]
         }
@@ -658,7 +658,7 @@
     {
       "parameters": {
         "operation": "send",
-        "recipientPhoneNumber": "{{ $json.num_whatsapp }}",
+        "recipientPhoneNumber": "={{ $json.num_whatsapp }}",
         "textBody": "Je transfère votre demande au propriétaire qui vous répondra rapidement.",
         "additionalFields": {}
       },
@@ -782,12 +782,8 @@
               "fieldValue": "new"
             },
             {
-              "fieldId": "created_at",
-              "fieldValue": "{{ $now.toISO() }}"
-            },
-            {
               "fieldId": "derniere_activite",
-              "fieldValue": "{{ $now.toISO() }}"
+              "fieldValue": "={{ $now.toISO() }}"
             },
             {
               "fieldId": "pending_data",
@@ -795,7 +791,7 @@
             },
             {
               "fieldId": "property_id",
-              "fieldValue": "{{ $json.property_id }}"
+              "fieldValue": "={{ $json.property_id }}"
             }
           ]
         }
