@@ -1,0 +1,1202 @@
+{
+  "name": "Assistant Airbnb WhatsApp V4 EN TEST Multi-Logements copy",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-webhook",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "ea926243-3fb3-4551-be68-c0c68d76bd95",
+      "name": "Webhook WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -5520,
+        -624
+      ],
+      "webhookId": "49529ab9-515e-4d20-8811-7a7144c779e2",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "VARIABLE A CHANGER POUR TRIGGER WHATSAPP : ={{ $json.entry[0].changes[0].value.messages[0].from }}"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -5632,
+        -304
+      ],
+      "id": "07ee3049-c7a4-41f0-9e3f-eed8d5a8e7bc",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "voyageurs2",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "num_whatsapp",
+              "condition": "eq",
+              "keyValue": "={{ $json.sessionId }}"
+            }
+          ]
+        }
+      },
+      "id": "35c50c57-f8ad-4e37-a9a5-2315b3cb0751",
+      "name": "Supabase - Get User",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -5008,
+        -416
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "xt1cN32W5LyJFrht",
+          "name": "Supabase Airbnb WA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.id }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "c8369994-8c00-4730-944d-573a7d63965b",
+      "name": "IF User Exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -4816,
+        -416
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.detected }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "311c35a3-cab7-4b02-9c97-42b8b16cc369",
+      "name": "IF Property Detected",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -3840,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "voyageurs2",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Code - Detect Property (Main)').item.json.user_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "property_id",
+              "fieldValue": "={{ $('Code - Detect Property (Main)').item.json.property_id }}"
+            },
+            {
+              "fieldId": "derniere_activite",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "id": "369d9850-6687-4105-a7b9-5b3c2e30d25c",
+      "name": "Supabase - Update Property",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -3664,
+        -496
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xt1cN32W5LyJFrht",
+          "name": "Supabase Airbnb WA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "rag_test_for_charles_locabot"
+      },
+      "id": "5d1a7b6f-41a9-4323-873d-faf402091609",
+      "name": "Supabase - Get Property FAQ",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -3488,
+        -400
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xt1cN32W5LyJFrht",
+          "name": "Supabase Airbnb WA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "n8n_chat_histories",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "condition": "eq",
+              "keyValue": "=={{ $('Code - Detect Property (Main)').first().json.user_id }}\n\n"
+            }
+          ]
+        }
+      },
+      "id": "1b150211-4c82-4b75-b952-07a90b5dabb3",
+      "name": "Supabase - Get History",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -3472,
+        -624
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "xt1cN32W5LyJFrht",
+          "name": "Supabase Airbnb WA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "claude-sonnet-4-20250514"
+            },
+            {
+              "name": "max_tokens",
+              "value": "1000"
+            },
+            {
+              "name": "system",
+              "value": "={{ $json.system_prompt }}"
+            },
+            {
+              "name": "messages",
+              "value": "={{ [{role: 'user', content: $json.user_message}] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "946cf8dd-dba8-4cc5-95a6-0d2b4fb8175f",
+      "name": "HTTP Request - Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -3232,
+        -880
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "f8vF26loSuXKMqVX",
+          "name": "CLAUDE-N8N-AIRBNB-WA"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "tableId": "n8n_chat_histories",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "session_id",
+              "fieldValue": "={{ $node[\"When chat message received\"].json.sessionId }}"
+            },
+            {
+              "fieldId": "message",
+              "fieldValue": "={{ JSON.stringify({\"type\": \"human\", \"content\": $node[\"When chat message received\"].json.chatInput}) }}"
+            },
+            {
+              "fieldId": "Date",
+              "fieldValue": "=={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "id": "cfc45955-e961-4999-8f6e-01b8196e0d7a",
+      "name": "Supabase - Save User Message",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -2464,
+        -720
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xt1cN32W5LyJFrht",
+          "name": "Supabase Airbnb WA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "n8n_chat_histories",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "session_id",
+              "fieldValue": "={{ $node[\"When chat message received\"].json.sessionId }}"
+            },
+            {
+              "fieldId": "message",
+              "fieldValue": "={{ JSON.stringify({\"type\": \"ai\", \"content\": $node[\"Code - Parse OpenAI Response\"].json.bot_response}) }}"
+            },
+            {
+              "fieldId": "Date",
+              "fieldValue": "=={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "id": "10b3a314-15f6-450d-9b35-b9ebc99807fd",
+      "name": "Supabase - Save Bot Message",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -2464,
+        -544
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xt1cN32W5LyJFrht",
+          "name": "Supabase Airbnb WA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.structured_data !== null }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "3aed0f64-c1e0-47ca-a717-3dadc0dc507a",
+      "name": "IF Structured Data Exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -2624,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "voyageurs2",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.user_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "date_arrivee",
+              "fieldValue": "=={{ $json.structured_data.date_arrivee }}"
+            },
+            {
+              "fieldId": "date_depart",
+              "fieldValue": "=={{ $json.structured_data.date_depart }}"
+            },
+            {
+              "fieldId": "pending_data",
+              "fieldValue": "=={{ JSON.stringify($json.structured_data) }}"
+            },
+            {
+              "fieldId": "derniere_activite",
+              "fieldValue": "=={{ $now.toISO() }}"
+            },
+            {
+              "fieldId": "property_id",
+              "fieldValue": "=={{ $json.property_id }}"
+            }
+          ]
+        }
+      },
+      "id": "ddfd05bc-c2df-48a5-bd5c-4fea0bb333e2",
+      "name": "Supabase - Update User Data",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -2160,
+        -144
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xt1cN32W5LyJFrht",
+          "name": "Supabase Airbnb WA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "voyageurs2",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $node['Code - Parse OpenAI Response'].json.user_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "derniere_activite",
+              "fieldValue": "=={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "id": "28159b7e-edb4-46bb-bb2a-20cd4a016419",
+      "name": "Supabase - Update Activity Only",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1984,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xt1cN32W5LyJFrht",
+          "name": "Supabase Airbnb WA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {success: true, message: $node['Code - Parse OpenAI Response'].json.bot_response} }}",
+        "options": {}
+      },
+      "id": "d2fc81cc-27c0-4468-838a-2695680622a0",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -1776,
+        -592
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "841c71a9-d377-4da3-ba2d-0061e76a78ca",
+      "name": "Merge User Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        -4400,
+        -432
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {success: true, message: 'Bienvenue ! Pour quel logement avez-vous une question ?\\n1. Logement Anatole\\n2. Appartement Paris Centre\\n3. Villa Bordeaux\\n\\nRépondez avec le numéro ou le nom du logement.'} }}",
+        "options": {}
+      },
+      "id": "473e4f44-2d15-498b-a7ab-2f6cd19259da",
+      "name": "Ask Property Selection",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -3680,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "n8n_chat_histories",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "session_id",
+              "fieldValue": "={{ $('When chat message received').item.json.sessionId }}"
+            },
+            {
+              "fieldId": "message",
+              "fieldValue": "{\"type\": \"ai\", \"content\": \"Bienvenue ! Pour quel logement avez-vous une question ?\"}"
+            },
+            {
+              "fieldId": "Date",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "id": "4450b1b9-e605-4fc6-90cd-f51298cda764",
+      "name": "Supabase - Save Ask Property",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -3456,
+        -208
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xt1cN32W5LyJFrht",
+          "name": "Supabase Airbnb WA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -5184,
+        -416
+      ],
+      "id": "ed62d92d-f70b-4138-8eec-351d3f49e701",
+      "name": "When chat message received",
+      "webhookId": "f3dcf26f-9abe-4d05-a889-dbf72eb95477"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "gpt-4.1-mini"
+            },
+            {
+              "name": "messages",
+              "value": "={{ $('Prepare OpenAI Messages').item.json.messages }}"
+            },
+            {
+              "name": "max_tokens",
+              "value": "={{ 1000 }}"
+            },
+            {
+              "name": "temperature",
+              "value": "={{ 0.7 }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2912,
+        -480
+      ],
+      "id": "a3f9ce43-e9b1-4a52-8a6f-9efdef599313",
+      "name": "HTTP Request - OpenAI API",
+      "credentials": {
+        "openAiApi": {
+          "id": "ylLSDKqy6FMi3jmk",
+          "name": "OpenAi Airbnb WA-Tests n8n"
+        },
+        "httpHeaderAuth": {
+          "id": "jc6tEtJnwhgseXLT",
+          "name": "OpenAI-n8n-airbnb-wa"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gérer les cas où les nodes n'ont pas été exécutés\nconst allInputs = $input.all();\nconst faqData = allInputs.filter(item => item.json.content);\nconst historyData = allInputs.filter(item => item.json.message);\n\nconst faqContext = faqData.length > 0 \n  ? faqData.map(item => item.json.content).join('\\n\\n')\n  : 'Aucune FAQ disponible';\n\nconst conversationHistory = historyData.length > 0\n  ? historyData.map(item => {\n      // CORRECTION: Parser le JSON si c'est une string\n      const msg = typeof item.json.message === 'string' \n        ? JSON.parse(item.json.message) \n        : item.json.message;\n      return `${msg.type}: ${msg.content}`;\n    }).reverse().join('\\n')\n  : 'Première conversation';\n\n// Récupérer les données user depuis le node précédent\nconst detectPropertyData = $('Code - Detect Property (Main)').first().json;\nconst originalMessage = $('When chat message received').first().json.chatInput;\n\nconst systemPrompt = `Tu es l'assistant WhatsApp pour un logement Airbnb.\n\nDATES UTILISATEUR ACTUELLES:\n- Arrivée: ${detectPropertyData.date_arrivee || 'NON RENSEIGNÉE'}\n- Départ: ${detectPropertyData.date_depart || 'NON RENSEIGNÉE'}\n\nINFORMATIONS LOGEMENT (FAQ):\n${faqContext}\n\nHISTORIQUE CONVERSATION:\n${conversationHistory}\n\nINSTRUCTIONS:\n1. Si c'est la première interaction, commence ta réponse par 'Bonjour ! Je suis l'assistant pour [nom logement].'\n2. Réponds dans la langue de l'utilisateur de manière concise et amicale (style WhatsApp)\n3. Si l'utilisateur mentionne des dates d'arrivée/départ, extrais-les\n4. CRITIQUE : Si les dates ne sont pas connues, demande : \"Pour mieux vous aider, pourriez-vous m'indiquer vos dates de séjour (arrivée et départ) ?\"\n5. Si tu ne peux pas répondre à une question d'après ta FAQ, indique-le clairement\n6. À la fin de ta réponse, ajoute une ligne <data> si tu détectes des informations structurées:\n<data>\n{\n  \"date_arrivee\": \"YYYY-MM-DD ou null\",\n  \"date_depart\": \"YYYY-MM-DD ou null\",\n  \"needs_human\": true ou false\n}\n</data>`;\n\nreturn {\n  system_prompt: systemPrompt,\n  user_message: originalMessage,\n  user_id: detectPropertyData.user_id,\n  property_id: detectPropertyData.property_id,\n  num_whatsapp: detectPropertyData.num_whatsapp\n};"
+      },
+      "id": "0b162c1e-59e7-4ca8-840a-aab61ef4aaf6",
+      "name": "Code - Prepare OpenAI Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3296,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Récupérer la réponse JSON du nœud précédent (HTTP Request)\nconst response = $input.first().json;\n\n// Sécurité : Vérifier si la réponse est valide\nif (!response.choices || response.choices.length === 0) {\n  console.error(\"La réponse d'OpenAI est invalide ou ne contient pas de 'choices'.\");\n  return { error: \"Réponse invalide d'OpenAI\" };\n}\n\n// 2. Extraire le contenu textuel de la réponse d'OpenAI\nconst openAIContent = response.choices[0].message.content;\n\n// 3. Extraire les données structurées (le bloc <data>)\nlet structuredData = null;\n// Utilise une expression régulière pour trouver le bloc <data>\nconst dataMatch = openAIContent.match(/<data>([\\s\\S]*?)<\\/data>/);\n\nif (dataMatch && dataMatch[1]) {\n  try {\n    // Essaye de parser le contenu JSON trouvé dans le bloc <data>\n    structuredData = JSON.parse(dataMatch[1].trim());\n  } catch (e) {\n    console.error(\"Erreur de parsing du JSON des données structurées :\", e);\n    structuredData = null; // En cas d'erreur, on ne garde rien\n  }\n}\n\n// 4. Nettoyer la réponse pour l'utilisateur (enlever le bloc <data>)\nconst cleanedResponse = openAIContent.replace(/<data>[\\s\\S]*?<\\/data>/, '').trim();\n\n// 5. Renvoyer les données prêtes pour la suite du workflow\n// CORRECTION: Récupérer num_whatsapp depuis Code - Prepare OpenAI Context\nconst preparedData = $('Code - Prepare OpenAI Context').item.json;\n\nreturn {\n  user_id: preparedData.user_id,\n  property_id: preparedData.property_id,\n  num_whatsapp: preparedData.num_whatsapp,\n  bot_response: cleanedResponse,\n  structured_data: structuredData,\n  raw_response: response\n};"
+      },
+      "id": "41cfb81c-8f88-4c60-b11b-6dc9ad64aa56",
+      "name": "Code - Parse OpenAI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2720,
+        -432
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Démarrer le tableau avec le message système\nconst messages = [{\n  role: 'system',\n  content: $('Code - Prepare OpenAI Context').item.json.system_prompt\n}];\n\n// 2. Récupérer l'historique de Supabase\nconst history = $('Supabase - Get History').all();\n\n// 3. Ajouter chaque message de l'historique au tableau\nfor (const item of history) {\n  // CORRECTION: Parser le JSON si c'est une string\n  const msgData = item.json.message;\n  const msg = typeof msgData === 'string' ? JSON.parse(msgData) : msgData;\n  \n  if (msg && msg.content) {\n    messages.push({\n      role: msg.type === 'human' ? 'user' : 'assistant',\n      content: msg.content\n    });\n  }\n}\n\n// 4. Ajouter le dernier message de l'utilisateur\nmessages.push({\n  role: 'user',\n  content: $('Code - Prepare OpenAI Context').item.json.user_message\n});\n\n// 5. Renvoyer le tableau final\nreturn {\n  messages: messages\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3104,
+        -432
+      ],
+      "id": "4ef1698c-ec8b-4419-bf84-555690b71a79",
+      "name": "Prepare OpenAI Messages"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d04f6f32-d82a-49a1-aab1-d6931b558aaf",
+              "leftValue": "={{ $json.structured_data?.needs_human }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2480,
+        -320
+      ],
+      "id": "447527b5-4ea7-414a-aa35-a1b5f1bc52b1",
+      "name": "IF Needs Human"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "recipientPhoneNumber": "=={{ $json.num_whatsapp }}",
+        "textBody": "Je transfère votre demande au propriétaire qui vous répondra rapidement.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        -2096,
+        -320
+      ],
+      "id": "9aa7f1bc-2858-440e-a910-b6eaff48c254",
+      "name": "Send Message To User",
+      "webhookId": "9f17b893-ea23-46cc-a38d-8d000909edd7",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "wi97dZxaeykrcNGY",
+          "name": "WhatsApp Demo Airbnb"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -2240,
+        -448
+      ],
+      "id": "de8a24e5-48c7-4c65-b8f7-06f9f31e35b1",
+      "name": "Send a message to owner",
+      "webhookId": "49f90dea-6382-4b00-9263-71c77dd60191",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d0ea8487-de2b-43ed-ad11-4ca6ebfee035",
+              "leftValue": "={{ $json.date_depart }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "f4de1328-7a93-45cc-a94b-d64387c5e8b5",
+              "leftValue": "={{ $now }}",
+              "rightValue": "={{ $json.date_depart }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "before"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4192,
+        -464
+      ],
+      "id": "0ddb6c95-c5b8-40de-878f-ade3ffc2cc24",
+      "name": "If Access Check"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"message\": \"Votre séjour est terminé. Merci d'avoir séjourné chez nous !\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -4032,
+        -272
+      ],
+      "id": "20933426-4482-4c0f-841d-6d32b776b341",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const message = $node['When chat message received'].json.chatInput.toLowerCase();\n\nconst properties = [\n  { id: 'anatole', names: ['logement_anatole', 'anatole'], code: 'LOGEMENT_ANATOLE' }\n];\n\nlet detectedProperty = null;\n\nfor (const prop of properties) {\n  for (const name of prop.names) {\n    if (message.includes(name.toLowerCase())) {\n      detectedProperty = prop.id;\n      break;\n    }\n  }\n  if (detectedProperty) break;\n}\n\nreturn {\n  property_id: detectedProperty,\n  message: $node['When chat message received'].json.chatInput,\n  num_whatsapp: $node['When chat message received'].json.sessionId\n};"
+      },
+      "id": "13f7d2d3-aaa5-4cb9-bb5a-5dafdd655ad2",
+      "name": "Code - Detect Property (New User)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4688,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// CORRECTION: Récupérer le message depuis le node d'origine\nconst originalMessage = $('When chat message received').first().json.chatInput;\nconst message = originalMessage?.toLowerCase() || '';\n\n// Récupérer les données utilisateur depuis Merge User Data\nconst userData = $input.first().json;\n\n// Liste des logements (à adapter selon tes logements réels)\nconst properties = [\n  { id: 'anatole', names: ['logement_anatole', 'anatole', 'appartement anatole'], code: 'LOGEMENT_ANATOLE' },\n  { id: 'paris_center', names: ['logement_paris', 'paris', 'centre paris'], code: 'LOGEMENT_PARIS' },\n  { id: 'bordeaux_villa', names: ['logement_bordeaux', 'bordeaux', 'villa bordeaux'], code: 'LOGEMENT_BORDEAUX' }\n];\n\nlet detectedProperty = null;\n\n// Si l'utilisateur a déjà un property_id enregistré\nif (userData.property_id) {\n  detectedProperty = userData.property_id;\n}\n// Sinon, détecter dans le message\nelse {\n  for (const prop of properties) {\n    for (const name of prop.names) {\n      if (message.includes(name.toLowerCase())) {\n        detectedProperty = prop.id;\n        break;\n      }\n    }\n    if (detectedProperty) break;\n  }\n}\n\nreturn {\n  property_id: detectedProperty,\n  detected: detectedProperty !== null,\n  message: originalMessage,\n  user_id: userData.id,\n  num_whatsapp: userData.num_whatsapp,\n  conversation_state: userData.conversation_state,\n  date_arrivee: userData.date_arrivee,\n  date_depart: userData.date_depart\n};"
+      },
+      "id": "06cd9e3a-6032-4082-b2a6-920099c1fba8",
+      "name": "Code - Detect Property (Main)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3968,
+        -560
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "voyageurs2",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "num_whatsapp",
+              "fieldValue": "={{ $node['When chat message received'].json.sessionId }}"
+            },
+            {
+              "fieldId": "conversation_state",
+              "fieldValue": "new"
+            },
+            {
+              "fieldId": "created_at",
+              "fieldValue": "=={{ $now.toISO() }}"
+            },
+            {
+              "fieldId": "derniere_activite",
+              "fieldValue": "=={{ $now.toISO() }}"
+            },
+            {
+              "fieldId": "pending_data",
+              "fieldValue": "{}"
+            },
+            {
+              "fieldId": "property_id",
+              "fieldValue": "=={{ $json.property_id }}"
+            }
+          ]
+        }
+      },
+      "id": "01894150-fa58-404c-a29e-70c440e4d55e",
+      "name": "Supabase - Create User",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -4528,
+        -272
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xt1cN32W5LyJFrht",
+          "name": "Supabase Airbnb WA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "NODE CODE DETECT PROPERTY : POUR AJOUTER UN LOGEMENT : { \n  id: 'villa_nice', \n  names: ['logement_nice', 'nice', 'villa nice', 'côte azur'], \n  code: 'LOGEMENT_NICE' \n}"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -4816,
+        -64
+      ],
+      "id": "480f77d0-da6e-4cc6-b0dc-cbb14cba5295",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Supabase - Get User": {
+      "main": [
+        [
+          {
+            "node": "IF User Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF User Exists": {
+      "main": [
+        [
+          {
+            "node": "Merge User Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Detect Property (New User)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Property Detected": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Update Property",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask Property Selection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Update Property": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Get Property FAQ",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Supabase - Get History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Get Property FAQ": {
+      "main": [
+        [
+          {
+            "node": "Code - Prepare OpenAI Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Get History": {
+      "main": [
+        [
+          {
+            "node": "Code - Prepare OpenAI Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Save User Message": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Save Bot Message": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Structured Data Exists": {
+      "main": [
+        [
+          {
+            "node": "IF Needs Human",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Supabase - Update Activity Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Update User Data": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Update Activity Only": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge User Data": {
+      "main": [
+        [
+          {
+            "node": "If Access Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask Property Selection": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Save Ask Property",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Save Ask Property": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Get User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - OpenAI API": {
+      "main": [
+        [
+          {
+            "node": "Code - Parse OpenAI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Prepare OpenAI Context": {
+      "main": [
+        [
+          {
+            "node": "Prepare OpenAI Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Parse OpenAI Response": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Save Bot Message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF Structured Data Exists",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Supabase - Save User Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare OpenAI Messages": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - OpenAI API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Needs Human": {
+      "main": [
+        [
+          {
+            "node": "Send a message to owner",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Message To User",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Supabase - Update User Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Message To User": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message to owner": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Access Check": {
+      "main": [
+        [
+          {
+            "node": "Code - Detect Property (Main)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Detect Property (New User)": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Create User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Detect Property (Main)": {
+      "main": [
+        [
+          {
+            "node": "IF Property Detected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Create User": {
+      "main": [
+        [
+          {
+            "node": "Merge User Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c9f5f4c4-295c-419c-a6c2-eeb0bbec92ae",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5bdc576cffe1bfe78298cd2ba8beff443418880da60bbc86e1f2b02b0cfcded9"
+  },
+  "id": "peyOIP9AA15cvW8o",
+  "tags": []
+}
