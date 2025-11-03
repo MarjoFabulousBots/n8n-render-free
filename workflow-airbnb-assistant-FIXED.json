@@ -696,46 +696,36 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "d0ea8487-de2b-43ed-ad11-4ca6ebfee035",
-              "leftValue": "={{ $json.date_depart }}",
-              "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "empty",
-                "singleValue": true
-              }
-            },
-            {
-              "id": "f4de1328-7a93-45cc-a94b-d64387c5e8b5",
-              "leftValue": "={{ $now }}",
-              "rightValue": "={{ $json.date_depart }}",
-              "operator": {
-                "type": "dateTime",
-                "operation": "before"
-              }
-            }
-          ],
-          "combinator": "or"
-        },
-        "options": {}
+        "jsCode": "// Récupérer les données utilisateur\nconst userData = $input.first().json;\nconst dateDepart = userData.date_depart;\n\n// Si pas de date de départ, accès autorisé (nouvel utilisateur ou date non renseignée)\nif (!dateDepart || dateDepart === '' || dateDepart === null) {\n  return { ...userData, access_granted: true, reason: 'no_departure_date' };\n}\n\n// Si date de départ existe, vérifier si elle est dans le futur\ntry {\n  const departureDate = new Date(dateDepart);\n  const now = new Date();\n  \n  // Réinitialiser les heures pour comparer uniquement les dates\n  departureDate.setHours(0, 0, 0, 0);\n  now.setHours(0, 0, 0, 0);\n  \n  // Accès autorisé si la date de départ est aujourd'hui ou dans le futur\n  if (departureDate >= now) {\n    return { ...userData, access_granted: true, reason: 'departure_date_valid' };\n  } else {\n    // Accès refusé : séjour terminé\n    return { ...userData, access_granted: false, reason: 'stay_ended' };\n  }\n} catch (e) {\n  // En cas d'erreur de parsing de date, autoriser l'accès\n  console.error('Erreur parsing date:', e);\n  return { ...userData, access_granted: true, reason: 'date_parse_error' };\n}"
       },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         -4192,
         -464
       ],
       "id": "0ddb6c95-c5b8-40de-878f-ade3ffc2cc24",
-      "name": "If Access Check"
+      "name": "Code - Access Check"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.access_granted }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -4000,
+        -464
+      ],
+      "id": "access-check-if-node",
+      "name": "IF Access Granted"
     },
     {
       "parameters": {
@@ -992,7 +982,7 @@
       "main": [
         [
           {
-            "node": "If Access Check",
+            "node": "Code - Access Check",
             "type": "main",
             "index": 0
           }
@@ -1136,7 +1126,18 @@
         ]
       ]
     },
-    "If Access Check": {
+    "Code - Access Check": {
+      "main": [
+        [
+          {
+            "node": "IF Access Granted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Access Granted": {
       "main": [
         [
           {

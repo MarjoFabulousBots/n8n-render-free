@@ -7,23 +7,60 @@
 
 ## ✅ Liste des corrections
 
-### 🆕 CORRECTION SUPPLÉMENTAIRE (2e itération)
+### 🆕 CORRECTION FINALE (3e itération) - SOLUTION DÉFINITIVE
 
-**Node : If Access Check** - Erreur de validation de type pour les nouveaux utilisateurs
-
-**Problème** :
+**Problème persistant avec "If Access Check"** :
 ```
 Wrong type: '=' is a string but was expecting a dateTime
 ```
-- Pour les nouveaux utilisateurs, `date_depart` est `null` ou vide
-- Avec `typeValidation: "strict"`, n8n refusait de comparer cette valeur vide avec une dateTime
 
-**Solution** :
-```json
-"typeValidation": "loose"  // Au lieu de "strict"
+**Cause racine** :
+- Le node IF évalue **TOUTES** les conditions même avec un combinator OR
+- Quand `date_depart` est null/vide, la comparaison dateTime échoue avant même d'évaluer la première condition
+- Changer `typeValidation` de "strict" à "loose" ne résolvait pas le problème
+
+**Solution appliquée - Remplacement par node Code** :
+
+Le node **"If Access Check"** (IF) a été remplacé par **deux nodes** :
+
+1. **"Code - Access Check"** - Logique robuste en JavaScript :
+```javascript
+// Gestion des 3 cas :
+// 1. Pas de date → accès autorisé (nouvel utilisateur)
+// 2. Date dans le futur/aujourd'hui → accès autorisé
+// 3. Date dans le passé → accès refusé
+
+const dateDepart = $input.first().json.date_depart;
+
+if (!dateDepart || dateDepart === '' || dateDepart === null) {
+  return { ...userData, access_granted: true };
+}
+
+const departureDate = new Date(dateDepart);
+const now = new Date();
+return {
+  ...userData,
+  access_granted: departureDate >= now
+};
 ```
-- Permet à n8n de convertir automatiquement les types
-- Les valeurs null/vides sont gérées correctement dans les comparaisons de dates
+
+2. **"IF Access Granted"** - Simple condition boolean :
+```json
+{
+  "conditions": {
+    "boolean": [{
+      "value1": "={{ $json.access_granted }}",
+      "value2": true
+    }]
+  }
+}
+```
+
+**Avantages** :
+- ✅ Gère correctement les dates null/undefined/vides
+- ✅ Pas d'erreur de type
+- ✅ Logique claire et maintenable
+- ✅ Propage toutes les données utilisateur
 
 ---
 
