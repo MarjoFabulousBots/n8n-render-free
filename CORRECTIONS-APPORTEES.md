@@ -7,7 +7,67 @@
 
 ## ✅ Liste des corrections
 
-### 🆕 CORRECTION DÉFINITIVE (5e itération) - Expressions restaurées ✅
+### 🆕 CORRECTION 6e itération - Gestion automatique de l'année des dates ✅
+
+**Problème découvert lors du 3e test** :
+
+L'utilisateur pose une 3e question après avoir donné ses dates "du 5 au 8 novembre".
+Le workflow s'arrête à "Respond to Webhook1" (message "Votre séjour est terminé").
+
+**Investigation des données Supabase** :
+```json
+"date_arrivee": "2024-11-05",
+"date_depart": "2024-11-08",
+"access_granted": false,
+"reason": "stay_ended"
+```
+
+**Cause racine** :
+- Date actuelle: `2025-11-03` (nous sommes en 2025)
+- Dates extraites: `2024-11-05` et `2024-11-08` (année 2024 !)
+- Comparaison: `2024-11-08 < 2025-11-03` → Séjour terminé
+
+**Pourquoi OpenAI met 2024 au lieu de 2025 ?**
+1. Le prompt système ne précise pas l'année actuelle
+2. OpenAI utilise par défaut l'année de sa date de coupure (2024/2025) ou suppose que c'est l'année passée
+
+**Solutions appliquées** :
+
+1. **Code - Prepare OpenAI Context** - Ajout du contexte temporel :
+```javascript
+const now = new Date();
+const currentYear = now.getFullYear();
+const currentDate = now.toISOString().split('T')[0];
+
+const systemPrompt = `...
+DATE ACTUELLE: ${currentDate} (nous sommes en ${currentYear})
+...
+IMPORTANT: Utilise l'année ${currentYear} pour les dates futures (pas ${currentYear - 1})
+...`;
+```
+
+2. **Code - Parse OpenAI Response** - Post-correction automatique :
+```javascript
+// Si la date extraite est dans le passé, corriger l'année
+if (structuredData.date_arrivee) {
+  const arrivalDate = new Date(structuredData.date_arrivee);
+  if (arrivalDate < now) {
+    const [year, month, day] = structuredData.date_arrivee.split('-');
+    structuredData.date_arrivee = `${currentYear}-${month}-${day}`;
+  }
+}
+// Même logique pour date_depart
+```
+
+**Avantages** :
+- ✅ Double protection : prompt + post-correction
+- ✅ Même si OpenAI se trompe, la correction automatique corrige
+- ✅ Les dates futures sont toujours avec la bonne année
+- ✅ Le Code - Access Check ne bloque plus les réservations valides
+
+---
+
+### 📝 ITÉRATION 5 - Expressions restaurées
 
 **Problème découvert lors du 2e test** :
 
