@@ -7,7 +7,48 @@
 
 ## ✅ Liste des corrections
 
-### 🆕 CORRECTION FINALE (4e itération) - PROBLÈME RÉSOLU ! ✅
+### 🆕 CORRECTION DÉFINITIVE (5e itération) - Expressions restaurées ✅
+
+**Problème découvert lors du 2e test** :
+
+Erreur dans "Supabase - Create User" :
+```
+Bad request: invalid input syntax for type timestamp with time zone: "{{ $now.toISO() }}"
+```
+
+**Cause racine** : Dans la correction précédente (itération 4), j'ai supprimé **TOUS** les `=` au début des expressions, ce qui les a rendues non-évaluables.
+
+**Format INCORRECT** (après itération 4) :
+```json
+"fieldValue": "{{ $now.toISO() }}"   ❌ N'est PAS évalué, envoyé comme texte
+```
+
+**Format CORRECT** (restauré) :
+```json
+"fieldValue": "={{ $now.toISO() }}"  ✅ Évalué correctement par n8n
+```
+
+**Solutions appliquées** :
+
+1. **Restauration du `=` dans toutes les expressions**
+   - Toutes les `fieldValue`, `keyValue`, `recipientPhoneNumber` : `"={{ ... }}"`
+   - Le `=` est NÉCESSAIRE pour que n8n évalue l'expression
+
+2. **Suppression du champ `created_at`** dans "Supabase - Create User"
+   - Supabase génère automatiquement ce champ (valeur par défaut: `now()`)
+   - Tentative de le définir manuellement causait l'erreur timestamp
+
+**Résultat** :
+- ✅ Toutes les expressions sont correctement évaluées
+- ✅ Les nouveaux utilisateurs peuvent être créés dans Supabase
+- ✅ Les timestamps sont gérés automatiquement par Supabase
+- ✅ Le workflow fonctionne de bout en bout
+
+---
+
+### 📝 ITÉRATION 4 - Correction partielle (corrigée en itération 5)
+
+**⚠️ ATTENTION : Cette correction était incomplète et a introduit un nouveau bug (corrigé en itération 5)**
 
 **Problème identifié grâce aux tests utilisateur** :
 
@@ -18,22 +59,22 @@ Dans "Supabase - Get User" output :
 "property_id": "==anatole"
 ```
 
-**Cause racine** : Expressions n8n mal formatées avec **double `=`**
+**Cause racine** : Expressions n8n mal formatées avec **double `=`** dans le workflow original
 ```json
-"fieldValue": "=={{ $json.property_id }}"  ❌ INCORRECT
-"fieldValue": "={{ $json.property_id }}"   ✅ CORRECT
+"fieldValue": "=={{ $json.property_id }}"  ❌ INCORRECT (workflow original)
 ```
 
-**Conséquences** :
-- Les dates extraites par OpenAI n'étaient pas sauvegardées correctement
-- Supabase recevait littéralement "=" au lieu de la valeur
-- Le Code - Access Check recevait `date_depart: "="` et bloquait l'accès
+**Conséquences du double `=`** :
+- n8n ne peut pas évaluer `=={{ ... }}` correctement
+- Résultat : Supabase recevait `"="` ou `"=="` comme valeurs littérales
+- Exemple : `"date_arrivee": "="` et `"property_id": "==anatole"`
 
-**Solutions appliquées** :
+**Solution appliquée (TROP AGRESSIVE - causé bug en itération 5)** :
 
-1. **Correction des expressions n8n** (suppression du `=` en trop) :
-   - `"=={{ expression }}"` → `"={{ expression }}"`
-   - Affecté : Tous les nodes Supabase (Update User Data, Get History, etc.)
+1. **Remplacement global `=={{ → {{`** :
+   - Enlevait le `=` en trop mais aussi le `=` nécessaire !
+   - Résultat : `"{{ expression }}"` → Pas évalué du tout par n8n
+   - **Cette correction a introduit le bug corrigé en itération 5**
 
 2. **Renforcement du Code - Access Check** :
 ```javascript
