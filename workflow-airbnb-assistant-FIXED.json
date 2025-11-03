@@ -176,7 +176,7 @@
             {
               "keyName": "session_id",
               "condition": "eq",
-              "keyValue": "=={{ $('Code - Detect Property (Main)').first().json.user_id }}\n\n"
+              "keyValue": "={{ $('Code - Detect Property (Main)').first().json.user_id }}\n\n"
             }
           ]
         }
@@ -266,7 +266,7 @@
             },
             {
               "fieldId": "Date",
-              "fieldValue": "=={{ $now.toISO() }}"
+              "fieldValue": "{{ $now.toISO() }}"
             }
           ]
         }
@@ -301,7 +301,7 @@
             },
             {
               "fieldId": "Date",
-              "fieldValue": "=={{ $now.toISO() }}"
+              "fieldValue": "{{ $now.toISO() }}"
             }
           ]
         }
@@ -358,23 +358,23 @@
           "fieldValues": [
             {
               "fieldId": "date_arrivee",
-              "fieldValue": "=={{ $json.structured_data.date_arrivee }}"
+              "fieldValue": "={{ $json.structured_data.date_arrivee }}"
             },
             {
               "fieldId": "date_depart",
-              "fieldValue": "=={{ $json.structured_data.date_depart }}"
+              "fieldValue": "={{ $json.structured_data.date_depart }}"
             },
             {
               "fieldId": "pending_data",
-              "fieldValue": "=={{ JSON.stringify($json.structured_data) }}"
+              "fieldValue": "={{ JSON.stringify($json.structured_data) }}"
             },
             {
               "fieldId": "derniere_activite",
-              "fieldValue": "=={{ $now.toISO() }}"
+              "fieldValue": "={{ $now.toISO() }}"
             },
             {
               "fieldId": "property_id",
-              "fieldValue": "=={{ $json.property_id }}"
+              "fieldValue": "={{ $json.property_id }}"
             }
           ]
         }
@@ -411,7 +411,7 @@
           "fieldValues": [
             {
               "fieldId": "derniere_activite",
-              "fieldValue": "=={{ $now.toISO() }}"
+              "fieldValue": "{{ $now.toISO() }}"
             }
           ]
         }
@@ -658,7 +658,7 @@
     {
       "parameters": {
         "operation": "send",
-        "recipientPhoneNumber": "=={{ $json.num_whatsapp }}",
+        "recipientPhoneNumber": "{{ $json.num_whatsapp }}",
         "textBody": "Je transfère votre demande au propriétaire qui vous répondra rapidement.",
         "additionalFields": {}
       },
@@ -696,7 +696,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Récupérer les données utilisateur\nconst userData = $input.first().json;\nconst dateDepart = userData.date_depart;\n\n// DEBUG: Logger les informations\nconsole.log('=== DEBUG ACCESS CHECK ===');\nconsole.log('date_depart value:', dateDepart);\nconsole.log('date_depart type:', typeof dateDepart);\nconsole.log('date_depart == null:', dateDepart == null);\nconsole.log('date_depart === null:', dateDepart === null);\nconsole.log('date_depart === undefined:', dateDepart === undefined);\nconsole.log('date_depart === \"\":', dateDepart === '');\nconsole.log('userData complet:', JSON.stringify(userData, null, 2));\n\n// Si pas de date de départ, accès autorisé (nouvel utilisateur ou date non renseignée)\n// Vérifier aussi undefined et les valeurs falsy\nif (!dateDepart || dateDepart === '' || dateDepart === null || dateDepart === undefined || dateDepart === 'null') {\n  console.log('✅ ACCÈS AUTORISÉ: Pas de date de départ');\n  return { ...userData, access_granted: true, reason: 'no_departure_date' };\n}\n\n// Si date de départ existe, vérifier si elle est dans le futur\ntry {\n  const departureDate = new Date(dateDepart);\n  const now = new Date();\n  \n  console.log('Date de départ parsée:', departureDate);\n  console.log('Date actuelle:', now);\n  console.log('Date de départ valide?', !isNaN(departureDate.getTime()));\n  \n  // Vérifier que la date est valide\n  if (isNaN(departureDate.getTime())) {\n    console.log('⚠️ Date invalide, accès autorisé par défaut');\n    return { ...userData, access_granted: true, reason: 'invalid_date_format' };\n  }\n  \n  // Réinitialiser les heures pour comparer uniquement les dates\n  departureDate.setHours(0, 0, 0, 0);\n  now.setHours(0, 0, 0, 0);\n  \n  console.log('Date départ (00:00):', departureDate);\n  console.log('Date now (00:00):', now);\n  console.log('Comparaison (depart >= now):', departureDate >= now);\n  \n  // Accès autorisé si la date de départ est aujourd'hui ou dans le futur\n  if (departureDate >= now) {\n    console.log('✅ ACCÈS AUTORISÉ: Date de départ valide dans le futur');\n    return { ...userData, access_granted: true, reason: 'departure_date_valid' };\n  } else {\n    // Accès refusé : séjour terminé\n    console.log('❌ ACCÈS REFUSÉ: Séjour terminé');\n    return { ...userData, access_granted: false, reason: 'stay_ended' };\n  }\n} catch (e) {\n  // En cas d'erreur de parsing de date, autoriser l'accès\n  console.error('❌ Erreur parsing date:', e);\n  return { ...userData, access_granted: true, reason: 'date_parse_error' };\n}"
+        "jsCode": "// Récupérer les données utilisateur\nconst userData = $input.first().json;\nconst dateDepart = userData.date_depart;\n\n// Vérifier si la date de départ est absente ou invalide\n// Cas à gérer: null, undefined, '', '=', '==', ou toute chaîne non-date\nconst isInvalidOrMissing = (\n  !dateDepart || \n  dateDepart === '' || \n  dateDepart === null || \n  dateDepart === undefined || \n  dateDepart === 'null' ||\n  dateDepart === '=' ||\n  dateDepart === '==' ||\n  typeof dateDepart !== 'string' ||\n  dateDepart.trim() === '' ||\n  dateDepart.startsWith('=')\n);\n\nif (isInvalidOrMissing) {\n  // Pas de date valide → accès autorisé (nouvel utilisateur ou date non renseignée)\n  return { ...userData, access_granted: true, reason: 'no_valid_departure_date' };\n}\n\n// Si date de départ existe et semble valide, vérifier si elle est dans le futur\ntry {\n  const departureDate = new Date(dateDepart);\n  const now = new Date();\n  \n  // Vérifier que la date est valide\n  if (isNaN(departureDate.getTime())) {\n    // Date invalide → accès autorisé par défaut\n    return { ...userData, access_granted: true, reason: 'invalid_date_format' };\n  }\n  \n  // Réinitialiser les heures pour comparer uniquement les dates\n  departureDate.setHours(0, 0, 0, 0);\n  now.setHours(0, 0, 0, 0);\n  \n  // Accès autorisé si la date de départ est aujourd'hui ou dans le futur\n  if (departureDate >= now) {\n    return { ...userData, access_granted: true, reason: 'departure_date_valid' };\n  } else {\n    // Accès refusé : séjour terminé\n    return { ...userData, access_granted: false, reason: 'stay_ended' };\n  }\n} catch (e) {\n  // En cas d'erreur de parsing de date, autoriser l'accès\n  return { ...userData, access_granted: true, reason: 'date_parse_error' };\n}"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -783,11 +783,11 @@
             },
             {
               "fieldId": "created_at",
-              "fieldValue": "=={{ $now.toISO() }}"
+              "fieldValue": "{{ $now.toISO() }}"
             },
             {
               "fieldId": "derniere_activite",
-              "fieldValue": "=={{ $now.toISO() }}"
+              "fieldValue": "{{ $now.toISO() }}"
             },
             {
               "fieldId": "pending_data",
@@ -795,7 +795,7 @@
             },
             {
               "fieldId": "property_id",
-              "fieldValue": "=={{ $json.property_id }}"
+              "fieldValue": "{{ $json.property_id }}"
             }
           ]
         }
