@@ -1,0 +1,259 @@
+{
+  "name": "Sub-Workflow: Save Guest Dates",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "workflow-trigger",
+      "name": "Execute Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "validate-guest-name",
+              "leftValue": "={{ $json.guest_name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "validate-check-in",
+              "leftValue": "={{ $json.check_in_date }}",
+              "rightValue": "^\\d{4}-\\d{2}-\\d{2}$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            },
+            {
+              "id": "validate-check-out",
+              "leftValue": "={{ $json.check_out_date }}",
+              "rightValue": "^\\d{4}-\\d{2}-\\d{2}$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        200,
+        0
+      ],
+      "id": "validate-input",
+      "name": "Validate Input"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "date-order-check",
+              "leftValue": "={{ DateTime.fromFormat($json.check_in_date, 'yyyy-MM-dd').toMillis() }}",
+              "rightValue": "={{ DateTime.fromFormat($json.check_out_date, 'yyyy-MM-dd').toMillis() }}",
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        400,
+        -100
+      ],
+      "id": "check-date-order",
+      "name": "Check Date Order"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.N8N_DB_API_URL }}/guests",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone_number\": \"{{ $json.phone_number }}\",\n  \"guest_name\": \"{{ $json.guest_name }}\",\n  \"check_in_date\": \"{{ $json.check_in_date }}\",\n  \"check_out_date\": \"{{ $json.check_out_date }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        -200
+      ],
+      "id": "save-to-database",
+      "name": "Save to Database"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"success\": true,\n  \"message\": \"Dates enregistrées avec succès\",\n  \"data\": {\n    \"guest_name\": \"{{ $json.guest_name }}\",\n    \"phone_number\": \"{{ $json.phone_number }}\",\n    \"check_in_date\": \"{{ $json.check_in_date }}\",\n    \"check_out_date\": \"{{ $json.check_out_date }}\"\n  }\n}"
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        800,
+        -200
+      ],
+      "id": "success-response",
+      "name": "Success Response"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"success\": false,\n  \"error\": \"Format de date invalide. Utilisez YYYY-MM-DD\",\n  \"received\": {\n    \"guest_name\": \"{{ $json.guest_name }}\",\n    \"check_in_date\": \"{{ $json.check_in_date }}\",\n    \"check_out_date\": \"{{ $json.check_out_date }}\"\n  }\n}"
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        100
+      ],
+      "id": "validation-error",
+      "name": "Validation Error"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"success\": false,\n  \"error\": \"La date de départ doit être après la date d'arrivée\",\n  \"received\": {\n    \"check_in_date\": \"{{ $json.check_in_date }}\",\n    \"check_out_date\": \"{{ $json.check_out_date }}\"\n  }\n}"
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        600,
+        0
+      ],
+      "id": "date-order-error",
+      "name": "Date Order Error"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "813228818532969",
+        "recipientPhoneNumber": "={{ $('Execute Workflow Trigger').item.json.phone_number }}",
+        "textBody": "Parfait ! ✅ J'ai bien noté votre séjour au Chalet Flocon.\n\n📅 **Arrivée :** {{ DateTime.fromFormat($('Execute Workflow Trigger').item.json.check_in_date, 'yyyy-MM-dd').toFormat('dd/MM/yyyy') }}\n📅 **Départ :** {{ DateTime.fromFormat($('Execute Workflow Trigger').item.json.check_out_date, 'yyyy-MM-dd').toFormat('dd/MM/yyyy') }}\n\nComment puis-je vous aider pour préparer votre séjour ? 🏔️",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        1000,
+        -200
+      ],
+      "id": "send-confirmation",
+      "name": "Send Confirmation (Optional)",
+      "disabled": true,
+      "notes": "Activez ce nœud si vous voulez envoyer une confirmation automatique (en plus de la réponse de l'AI Agent)"
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Check Date Order",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Date Order": {
+      "main": [
+        [
+          {
+            "node": "Save to Database",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Date Order Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Database": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success Response": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation (Optional)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "save-guest-v1",
+  "meta": {
+    "instanceId": "sub-workflow-save-guest"
+  },
+  "tags": []
+}

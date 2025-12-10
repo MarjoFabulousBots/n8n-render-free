@@ -1,0 +1,716 @@
+{
+  "name": "WhatsApp AI Agent pour Airbnb - N8N DB (Amélioré)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {
+          "messageStatusUpdates": [
+            "all"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1000,
+        300
+      ],
+      "id": "whatsapp-trigger",
+      "name": "WhatsApp Trigger",
+      "webhookId": "0af33abb-543e-4e06-8bfb-dda39cbaae5c"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.N8N_DB_API_URL }}/guests/{{ $json.contacts[0].wa_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -800,
+        300
+      ],
+      "id": "check-guest-exists",
+      "name": "Check Guest Exists in DB",
+      "notes": "Vérifie si le numéro WhatsApp existe dans la base de données.\nRetourne 404 si non trouvé, 200 + données si trouvé.",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "guest-exists-condition",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -600,
+        300
+      ],
+      "id": "if-guest-exists",
+      "name": "IF Guest Exists"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ {\n  \"guest_name\": $json.body.guest_name || 'Invité',\n  \"phone_number\": $json.body.phone_number,\n  \"check_in_date\": $json.body.check_in_date,\n  \"check_out_date\": $json.body.check_out_date,\n  \"today\": $now.format('yyyy-MM-dd'),\n  \"is_before_checkin\": $now.isBefore($json.body.check_in_date),\n  \"is_past_checkout\": $now.isAfter($json.body.check_out_date),\n  \"is_current_guest\": $now.isBetween($json.body.check_in_date, $json.body.check_out_date)\n} }}"
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -400,
+        200
+      ],
+      "id": "format-guest-data",
+      "name": "Format Guest Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "past-checkout-condition",
+              "leftValue": "={{ $json.is_past_checkout }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        200
+      ],
+      "id": "if-past-checkout",
+      "name": "IF Past Checkout"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "813228818532969",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "textBody": "Merci de votre message ! Votre séjour est maintenant terminé. Pour toute question, veuillez contacter directement le propriétaire au 06 01 02 03 04. 🏔️",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        100
+      ],
+      "id": "send-access-denied",
+      "name": "Send Access Denied Message"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ {\n  \"is_new_guest\": false,\n  \"guest_name\": $json.guest_name,\n  \"phone_number\": $json.phone_number,\n  \"check_in_date\": $json.check_in_date,\n  \"check_out_date\": $json.check_out_date,\n  \"guest_status\": $json.is_before_checkin ? 'FUTUR' : 'ACTUEL',\n  \"user_message\": $('WhatsApp Trigger').item.json.messages[0].text.body\n} }}"
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        300
+      ],
+      "id": "prepare-existing-guest-context",
+      "name": "Prepare Existing Guest Context"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ {\n  \"is_new_guest\": true,\n  \"guest_name\": $('WhatsApp Trigger').item.json.contacts[0].profile?.name || 'Invité',\n  \"phone_number\": $('WhatsApp Trigger').item.json.contacts[0].wa_id,\n  \"check_in_date\": null,\n  \"check_out_date\": null,\n  \"guest_status\": 'NOUVEAU',\n  \"user_message\": $('WhatsApp Trigger').item.json.messages[0].text.body\n} }}"
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -400,
+        400
+      ],
+      "id": "prepare-new-guest-context",
+      "name": "Prepare New Guest Context"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Message de l'utilisateur: {{ $json.user_message }}",
+        "options": {
+          "systemMessage": "=## CONTEXTE TEMPOREL\nDATE ACTUELLE: {{ $now.format('yyyy-MM-dd') }} ({{ $now.format('EEEE d MMMM yyyy', 'fr') }})\n⚠️ TOUJOURS utiliser cette date comme référence pour tous les calculs.\n\n---\n\n## DONNÉES DU VOYAGEUR\n{{ $json.is_new_guest ? '**NOUVEAU VOYAGEUR**\n**Nom:** ' + $json.guest_name + '\n**Téléphone:** ' + $json.phone_number + '\n⚠️ **Dates non enregistrées** - À collecter\n\n**PROCESSUS OBLIGATOIRE:**\n1. Vérifier si le message actuel contient déjà des dates\n2. Si OUI, extraire et enregistrer immédiatement avec save_guest_dates\n3. Si NON, demander: \"Bonjour ! 👋 Pour mieux vous aider, quelle est votre date d\\'arrivée au Chalet Flocon ?\\n(par exemple : demain, le 15 décembre, aujourd\\'hui...)\"' : '**VOYAGEUR EXISTANT**\n**Nom:** ' + $json.guest_name + '\n**Téléphone:** ' + $json.phone_number + '\n**Check-in:** ' + $json.check_in_date + '\n**Check-out:** ' + $json.check_out_date + '\n**Statut:** ' + $json.guest_status }}\n\n---\n\n## VOTRE RÔLE\nVous êtes l'assistant virtuel du Chalet Flocon à Val Thorens. Vous aidez les voyageurs avec des informations sur leur séjour.\n\n---\n\n## GESTION DES NOUVEAUX VOYAGEURS (CRUCIAL)\n\n### 🔄 ÉTAT ACTUEL\n{{ $json.is_new_guest ? '⚠️ NOUVEAU VOYAGEUR - DATES À COLLECTER' : '✅ VOYAGEUR ENREGISTRÉ' }}\n\n{{ $json.is_new_guest ? '### PROCESSUS DE COLLECTE DES DATES\n\n**RÈGLE #1: Analyser TOUJOURS le message actuel**\nAvant de demander quoi que ce soit, vérifier si le message contient déjà:\n- Une date d\\'arrivée\n- Une date de départ\n- Une période de séjour\n\nExemples de messages à détecter:\n- \"J\\'arrive demain pour 5 jours\"\n- \"Je serai là du 15 au 20 décembre\"\n- \"Mon séjour est du 10/12 au 15/12\"\n- \"Check-in le 12 décembre, check-out le 18\"\n\n**Si les dates sont dans le message:**\n1. Les extraire et les convertir au format YYYY-MM-DD\n2. Appeler IMMÉDIATEMENT save_guest_dates\n3. Confirmer: \"Parfait ! J\\'ai noté votre séjour du DD/MM au DD/MM. Comment puis-je vous aider ? 🏔️\"\n\n**Si PAS de dates dans le message:**\nÉTAPE 1 - Demander la date d\\'arrivée\n\"Bonjour ! 👋 Pour mieux vous aider, quelle est votre date d\\'arrivée au Chalet Flocon ?\\n(par exemple : demain, le 15 décembre, aujourd\\'hui...)\"\n\n⚠️ ATTENDRE la réponse\n\nÉTAPE 2 - Demander la date de départ\n\"Merci ! Et quelle est votre date de départ ?\"\n\n⚠️ ATTENDRE la réponse\n\nÉTAPE 3 - Enregistrer avec save_guest_dates\n\nÉTAPE 4 - Confirmer\n\"Parfait ! J\\'ai bien noté votre séjour du DD/MM au DD/MM. Comment puis-je vous aider pour préparer votre arrivée ? 🏔️\"\n\n**CONVERSION DES DATES (AUJOURD\\'HUI = {{ $now.format(\\'yyyy-MM-dd\\') }}):**\n- \"demain\" → {{ $now.plus(1, \\'days\\').format(\\'yyyy-MM-dd\\') }}\n- \"après-demain\" → {{ $now.plus(2, \\'days\\').format(\\'yyyy-MM-dd\\') }}\n- \"aujourd\\'hui\" → {{ $now.format(\\'yyyy-MM-dd\\') }}\n- \"dans 3 jours\" → {{ $now.plus(3, \\'days\\').format(\\'yyyy-MM-dd\\') }}\n- \"le 15 décembre\" → 2025-12-15\n- \"15/12\" → 2025-12-15\n- \"pour 5 jours\" depuis demain → check_in={{ $now.plus(1, \\'days\\').format(\\'yyyy-MM-dd\\') }}, check_out={{ $now.plus(6, \\'days\\').format(\\'yyyy-MM-dd\\') }}\n\n⚠️ RÈGLES CRITIQUES:\n- Analyser CHAQUE message pour des dates avant de demander\n- NE JAMAIS demander les deux dates dans une seule question\n- ATTENDRE la réponse entre chaque question\n- Appeler save_guest_dates UNIQUEMENT avec les DEUX dates complètes' : '### VOYAGEUR DÉJÀ ENREGISTRÉ\nVous avez accès à toutes les informations. Répondez normalement aux questions.' }}\n\n---\n\n## PERMISSIONS PAR STATUT\n\n### Voyageur FUTUR (arrivée à venir)\n✅ Infos pré-arrivée : check-in, accès, parking, navettes\n✅ Équipements du logement\n✅ Recommandations locales\n❌ Codes d'accès WiFi (seulement 24h avant arrivée)\n\n### Voyageur ACTUEL (sur place)\n✅ Tout : WiFi, équipements, activités, check-out, urgences\n✅ Recommandations restaurants/activités\n✅ Support complet\n\n---\n\n## BASE DE CONNAISSANCES INTERNE\n\n### 🚗 TRANSPORT & ACCÈS\n**Navettes gratuites:**\n- Depuis gare de Moutiers : gratuite sur réservation (contacter propriétaire)\n- Vers pistes de ski : toutes les 5 min, 7h-20h, 7j/7\n\n**Parking:** Gratuit, sécurisé, sur place au chalet\n**Adresse GPS:** Chalet Flocon, Val Thorens 73440\n\n### 🏠 CHECK-IN & CHECK-OUT\n**Check-in:** À partir de 16h00 (remise clés en personne)\n**Check-out:** Avant 10h00\n**Instructions d'accès:** Envoyées 24h avant l'arrivée par WhatsApp\n**Contact propriétaire:** 06 01 02 03 04 (disponible 7j/7, 8h-22h)\n\n### 🛁 ÉQUIPEMENTS BIEN-ÊTRE\n**Jacuzzi privatif:**\n- Inclus dans votre séjour, température 38°C\n- Maximum 6 personnes\n- Douche obligatoire avant utilisation\n- Serviettes spéciales fournies\n- Disponible 24h/24\n\n### 🍽️ CUISINE\n**Équipements:**\n- Four électrique, micro-ondes, lave-vaisselle\n- Plaque à induction 4 feux\n- Nespresso + cafetière filtre (capsules non fournies)\n- Bouilloire, grille-pain\n- Vaisselle complète pour 8 personnes\n- Ustensiles de cuisine complets\n\n### 🛏️ LINGE & ENTRETIEN\n**Fourni:**\n- Draps et housses de couette pour tous les lits\n- Couvertures supplémentaires\n- 1 grande serviette + 1 petite par personne\n- Tapis de bain\n\n**Appareils:**\n- Lave-linge (lessive non fournie)\n- Sèche-linge\n- Aspirateur, balai, serpillière\n- Fer et planche à repasser\n\n### ⛷️ SKI & MONTAGNE (SAISON HIVER)\n**Accès pistes:** 50 mètres à pied (ski aux pieds possible)\n**Casier à ski:** Sécurisé + chauffe-chaussures\n**Forfaits ski:** \n- Point de vente à 50m du chalet\n- Réservation en ligne: valthorens.com\n- Tarifs 6 jours: ~280€ adulte, ~240€ enfant\n\n**École de ski (ESF):**\n- Réservation recommandée: esf-valthorens.com\n- Cours enfants dès 3 ans\n- Cours adultes tous niveaux\n\n### 🥾 ACTIVITÉS ÉTÉ\n- Randonnée : 50+ sentiers balisés\n- VTT : pistes de descente + location sur place\n- Via ferrata : 3 parcours différents niveaux\n- Lac de montagne : 20 min à pied\n- Tyrolienne géante : réservation à l'office de tourisme\n\n### 🛒 COMMERCES & SERVICES\n**À proximité immédiate:**\n- Supermarché Sherpa : 30m (8h-20h)\n- Boulangerie : 40m (7h-13h, 16h-19h)\n- Boucher-Traiteur : 35m\n- Pharmacie : 30m (9h-19h)\n- Restaurants : 60-100m (10+ options)\n- Office de tourisme : 150m\n\n**Marché local:** Mercredi et samedi matins (produits locaux)\n\n### 📶 WIFI & CONNECTIVITÉ\n**Réseau:** CHALET_FLOCON_5G\n**Mot de passe:** Indiqué dans le livret d'accueil au chalet\n**Couverture:** Tout le chalet\n**Débit:** Fibre optique, adapté streaming/télétravail\n\n### ⚠️ RÈGLEMENT INTÉRIEUR\n- ❌ Non fumeur à l'intérieur (terrasse autorisée)\n- ✅ Animaux acceptés si propres et non laissés seuls\n- ❌ Fêtes et événements interdits\n- 🔇 Calme requis après 22h (voisinage)\n- 🗑️ Tri sélectif obligatoire (bacs fournis)\n- 💰 Caution : 300€ (restituée sous 7 jours après état des lieux)\n\n### 🚨 CONTACTS URGENCE\n- **Propriétaire:** 06 01 02 03 04 (7j/7, 8h-22h)\n- **Urgences:** 112\n- **Médecin de montagne:** 04 79 00 00 00\n- **Pharmacie de garde:** 04 79 00 01 01\n- **Secours en montagne (PGHM):** 04 79 00 02 02\n- **Pisteurs secouristes:** numéro sur plan des pistes\n\n### 🍽️ RECOMMANDATIONS RESTAURANTS\n**Budget €€€:**\n- Le Chalet de la Marine (gastronomique)\n- La Table du Sherpa (fondue savoyarde)\n\n**Budget €€:**\n- Le Galoubet (pizzas, grillades)\n- La Folie Douce (ambiance + restauration)\n\n**Rapide €:**\n- Le Patio (snack, burgers)\n- Boulangerie pour sandwichs\n\n💡 **Réservation fortement recommandée en haute saison**\n\n---\n\n## 🔧 OUTILS DISPONIBLES\n\n### 💾 save_guest_dates\n**Usage:** Enregistrer les dates d'un nouveau voyageur dans la base N8N\n**Quand l'utiliser:** Dès que vous avez collecté date d'arrivée ET date de départ\n**Paramètres requis:**\n- guest_name: string (nom complet)\n- phone_number: string (automatique)\n- check_in_date: string (YYYY-MM-DD)\n- check_out_date: string (YYYY-MM-DD)\n\n**Exemple d'appel:**\n```\nguest_name: \"Marie Dupont\"\nphone_number: \"33612345678\" (automatique)\ncheck_in_date: \"2025-12-15\"\ncheck_out_date: \"2025-12-20\"\n```\n\n### 💬 save_conversation\n**Usage:** Sauvegarder chaque échange dans l'historique\n**Quand l'utiliser:** Après CHAQUE message (user et bot)\n**Paramètres:**\n- phone_number: automatique\n- message: string\n- sender: 'user' | 'bot'\n- timestamp: automatique\n\n### 🌐 get_local_details (Perplexity)\n**Usage:** Recherche d'informations en temps réel\n**Exemples:**\n- \"Meilleurs restaurants Val Thorens décembre 2025\"\n- \"Météo Val Thorens semaine prochaine\"\n- \"Événements Val Thorens ce weekend\"\n\n### 📍 send_location (WhatsApp)\n**Usage:** Envoyer une position GPS\n**Utiliser pour:** Restaurants recommandés, points d'intérêt\n\n### 📧 notify_owner (Gmail)\n**Usage:** Alerter le propriétaire\n**Utiliser pour:** Urgences, demandes spéciales, problèmes techniques\n\n---\n\n## 📋 RÈGLES DE COMPORTEMENT\n\n### ✅ À FAIRE\n- Répondre UNIQUEMENT avec les infos de la base de connaissances\n- Utiliser la langue du message reçu\n- Être concis, chaleureux et professionnel\n- Adapter le niveau de détail à la question\n- Proposer des alternatives si pertinent\n\n### ❌ À NE JAMAIS FAIRE\n- Mentionner \"base de données\", \"système\", \"workflow\"\n- Inventer des informations non présentes\n- Proposer de faire des réservations\n- Donner des conseils médicaux\n- Partager des liens externes (sauf si dans la base)\n- Utiliser des emojis excessifs (max 1-2 par message)\n\n### ⚠️ SI INFORMATION MANQUANTE\n\"Je n'ai pas cette information précise. Je vous conseille de contacter directement le propriétaire au 06 01 02 03 04. Est-ce que je peux vous aider avec autre chose ?\"\n\n### 💬 TONE & STYLE\n- Amical mais professionnel\n- Phrases courtes et claires\n- Structurer avec des puces si liste\n- Toujours conclure par une question ouverte\n\n---\n\n**Vous êtes l'assistant du Chalet Flocon. Restez dans ce rôle en permanence.**"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        200,
+        300
+      ],
+      "id": "ai-agent",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 800
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        400,
+        480
+      ],
+      "id": "openai-model",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "ylLSDKqy6FMi3jmk",
+          "name": "OpenAi Airbnb WA-Tests n8n"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}-conversation",
+        "contextWindowLength": 15
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        200,
+        480
+      ],
+      "id": "conversation-memory",
+      "name": "Conversation Memory"
+    },
+    {
+      "parameters": {
+        "name": "save_guest_dates",
+        "description": "Enregistrer les dates de séjour d'un nouveau voyageur dans la base de données. À utiliser UNIQUEMENT après avoir collecté la date d'arrivée ET la date de départ. Les dates doivent être au format YYYY-MM-DD.",
+        "workflowId": "={{ $('WhatsApp Trigger').item.json.workflow_id }}",
+        "fields": {
+          "values": [
+            {
+              "name": "guest_name",
+              "value": "={{ $fromAI('guest_name', 'Nom complet du voyageur', 'string') }}"
+            },
+            {
+              "name": "phone_number",
+              "value": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}"
+            },
+            {
+              "name": "check_in_date",
+              "value": "={{ $fromAI('check_in_date', 'Date d\\'arrivée au format YYYY-MM-DD', 'string') }}"
+            },
+            {
+              "name": "check_out_date",
+              "value": "={{ $fromAI('check_out_date', 'Date de départ au format YYYY-MM-DD', 'string') }}"
+            },
+            {
+              "name": "action",
+              "value": "create_guest"
+            }
+          ]
+        },
+        "specifyInputSchema": true,
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"guest_name\": {\n      \"type\": \"string\",\n      \"description\": \"Nom complet du voyageur\"\n    },\n    \"check_in_date\": {\n      \"type\": \"string\",\n      \"description\": \"Date d'arrivée au format YYYY-MM-DD. Exemples: 2025-12-15, 2025-12-20\"\n    },\n    \"check_out_date\": {\n      \"type\": \"string\",\n      \"description\": \"Date de départ au format YYYY-MM-DD. Exemples: 2025-12-20, 2025-12-25\"\n    }\n  },\n  \"required\": [\"guest_name\", \"check_in_date\", \"check_out_date\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        500,
+        480
+      ],
+      "id": "save-guest-dates-tool",
+      "name": "Tool: Save Guest Dates",
+      "notes": "Appelle un sous-workflow pour enregistrer un nouveau voyageur.\n\nCRITIQUE: Ne pas utiliser avant d'avoir les DEUX dates."
+    },
+    {
+      "parameters": {
+        "name": "save_conversation",
+        "description": "Sauvegarder un message dans l'historique de conversation. Utiliser après chaque échange.",
+        "workflowId": "={{ $('WhatsApp Trigger').item.json.workflow_id }}",
+        "fields": {
+          "values": [
+            {
+              "name": "phone_number",
+              "value": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $fromAI('message', 'Contenu du message', 'string') }}"
+            },
+            {
+              "name": "sender",
+              "value": "={{ $fromAI('sender', 'user ou bot', 'string') }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}"
+            },
+            {
+              "name": "action",
+              "value": "save_message"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        500,
+        600
+      ],
+      "id": "save-conversation-tool",
+      "name": "Tool: Save Conversation",
+      "notes": "Enregistre chaque message dans l'historique pour référence future."
+    },
+    {
+      "parameters": {
+        "name": "get_local_details",
+        "description": "Rechercher des informations en temps réel sur Val Thorens (restaurants, météo, événements, activités). Utiliser quand l'information n'est pas dans la base de connaissances ou pour des données actualisées.",
+        "method": "POST",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "perplexityApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"sonar\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Tu es un assistant local pour Val Thorens. Réponds de manière concise en français avec des informations actualisées et géolocalisées.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $fromAI('query', 'Recherche à effectuer', 'string') }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        500,
+        720
+      ],
+      "id": "perplexity-tool",
+      "name": "Tool: Get Local Details",
+      "credentials": {
+        "perplexityApi": {
+          "id": "B48DX0Gnj8NtjuHG",
+          "name": "Perplexity account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "notify_owner",
+        "description": "Envoyer un email au propriétaire en cas d'urgence, problème technique ou demande spéciale nécessitant une intervention humaine.",
+        "method": "POST",
+        "url": "={{ $env.N8N_API_URL }}/webhook/notify-owner",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"guest_name\": \"{{ $('Prepare Existing Guest Context').item.json.guest_name || $('Prepare New Guest Context').item.json.guest_name }}\",\n  \"phone_number\": \"{{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}\",\n  \"subject\": \"{{ $fromAI('subject', 'Sujet de l\\'alerte', 'string') }}\",\n  \"message\": \"{{ $fromAI('message', 'Message détaillé', 'string') }}\",\n  \"urgency\": \"{{ $fromAI('urgency', 'low, medium ou high', 'string') }}\"\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        500,
+        840
+      ],
+      "id": "notify-owner-tool",
+      "name": "Tool: Notify Owner"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "813228818532969",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "textBody": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        300
+      ],
+      "id": "send-response",
+      "name": "Send WhatsApp Response"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "user-message-log",
+              "name": "user_message",
+              "value": "={{ $('WhatsApp Trigger').item.json.messages[0].text.body }}",
+              "type": "string"
+            },
+            {
+              "id": "phone-log",
+              "name": "phone_number",
+              "value": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+              "type": "string"
+            },
+            {
+              "id": "timestamp-log",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "sender-log",
+              "name": "sender",
+              "value": "user",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        600,
+        300
+      ],
+      "id": "log-user-message",
+      "name": "Log User Message"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.N8N_DB_API_URL }}/conversations",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone_number\": \"{{ $json.phone_number }}\",\n  \"message\": \"{{ $json.user_message }}\",\n  \"sender\": \"user\",\n  \"timestamp\": \"{{ $json.timestamp }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        300
+      ],
+      "id": "save-user-message-db",
+      "name": "Save User Message to DB",
+      "notes": "Sauvegarde automatique du message utilisateur dans l'historique"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bot-message-log",
+              "name": "bot_message",
+              "value": "={{ $('AI Agent').item.json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "phone-bot-log",
+              "name": "phone_number",
+              "value": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+              "type": "string"
+            },
+            {
+              "id": "timestamp-bot-log",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "sender-bot-log",
+              "name": "sender",
+              "value": "bot",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        600,
+        400
+      ],
+      "id": "log-bot-message",
+      "name": "Log Bot Message"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.N8N_DB_API_URL }}/conversations",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone_number\": \"{{ $json.phone_number }}\",\n  \"message\": \"{{ $json.bot_message }}\",\n  \"sender\": \"bot\",\n  \"timestamp\": \"{{ $json.timestamp }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        400
+      ],
+      "id": "save-bot-message-db",
+      "name": "Save Bot Message to DB",
+      "notes": "Sauvegarde automatique de la réponse du bot dans l'historique"
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check Guest Exists in DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Guest Exists in DB": {
+      "main": [
+        [
+          {
+            "node": "IF Guest Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Guest Exists": {
+      "main": [
+        [
+          {
+            "node": "Format Guest Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare New Guest Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Guest Data": {
+      "main": [
+        [
+          {
+            "node": "IF Past Checkout",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Past Checkout": {
+      "main": [
+        [
+          {
+            "node": "Send Access Denied Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Existing Guest Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Existing Guest Context": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare New Guest Context": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversation Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Save Guest Dates": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Save Conversation": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Get Local Details": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Notify Owner": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Response": {
+      "main": [
+        [
+          {
+            "node": "Log User Message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Bot Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log User Message": {
+      "main": [
+        [
+          {
+            "node": "Save User Message to DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Bot Message": {
+      "main": [
+        [
+          {
+            "node": "Save Bot Message to DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "improved-v2",
+  "meta": {
+    "instanceId": "airbnb-assistant-improved"
+  },
+  "tags": []
+}
