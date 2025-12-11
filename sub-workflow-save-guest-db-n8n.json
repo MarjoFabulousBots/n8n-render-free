@@ -1,0 +1,114 @@
+{
+  "name": "Sub: Save Guest Dates (DB N8N)",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "id": "workflow-trigger",
+      "name": "Execute Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "validate-phone",
+              "leftValue": "={{ $json.phone_number }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "validate-check-in",
+              "leftValue": "={{ $json.check_in_date }}",
+              "rightValue": "^\\d{4}-\\d{2}-\\d{2}$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            },
+            {
+              "id": "validate-check-out",
+              "leftValue": "={{ $json.check_out_date }}",
+              "rightValue": "^\\d{4}-\\d{2}-\\d{2}$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [200, 0],
+      "id": "validate-input",
+      "name": "Validate Input"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataMode": "autoMapInputData",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1,
+      "position": [400, -100],
+      "id": "save-to-voyageurs",
+      "name": "Save to Voyageurs DB",
+      "notes": "REMPLACER CE NŒUD par ton nœud Database N8N:\n- Type: Database N8N\n- Operation: upsert\n- Table: voyageurs\n- Colonnes: phone_number, check_in_date, check_out_date"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ {\n  \"success\": true,\n  \"message\": \"Dates enregistrées avec succès\",\n  \"phone_number\": $json.phone_number,\n  \"check_in_date\": $json.check_in_date,\n  \"check_out_date\": $json.check_out_date\n} }}"
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [600, -100],
+      "id": "success-response",
+      "name": "Success Response"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ {\n  \"success\": false,\n  \"error\": \"Format de date invalide. Utilisez YYYY-MM-DD\"\n} }}"
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [400, 100],
+      "id": "validation-error",
+      "name": "Validation Error"
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [[{"node": "Validate Input", "type": "main", "index": 0}]]
+    },
+    "Validate Input": {
+      "main": [
+        [{"node": "Save to Voyageurs DB", "type": "main", "index": 0}],
+        [{"node": "Validation Error", "type": "main", "index": 0}]
+      ]
+    },
+    "Save to Voyageurs DB": {
+      "main": [[{"node": "Success Response", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
